@@ -4,6 +4,8 @@ var con      = require('./../config/db');
 const bcrypt = require("bcrypt");
 const csv    = require('fast-csv');
 var Json2csvParser = require('json2csv').Parser;
+const md5 = require('md5');
+const jwt = require('jsonwebtoken');
 const salt   = 10;
 // Item Object
 var User = function(user){
@@ -58,28 +60,28 @@ var User = function(user){
   this.directions   = user.directions;
   this.shipped      = user.shipped;
   this.reg_temp_code = user.reg_temp_code;
-  this.username    =user.username;
-  this.password    =user.password;
-  this.email       =user.email;
-  this.joined      =user.joined;
-  this.expires     =user.expires;
-  this.logins      =user.logins;
-  this.last_login  =user.last_login;
-  this.last_update =user.last_update;
-  this.renew_date  =user.renew_date;
-  this.activated   =user.activated;
-  this.activate_type =user.activate_type;
-  this.status      =user.status;
-  this.lead        =user.lead;
-  this.trial       =user.trial;
-  this.start_page  =user.start_page;
-  this.trackstat   =user.trackstat;
-  this.reg_page    =user.reg_page;
-  this.added_by    =user.added_by;
-  this.flag_exempt =user.flag_exempt;
-  this.ip          =user.ip;
-  this.order_id    =user.order_id;
-  this.total_concurrent =user.total_concurrent;
+  this.username    = user.username;
+  this.password    = user.password;
+  this.email       = user.email;
+  this.joined      = user.joined;
+  this.expires     = user.expires;
+  this.logins      = user.logins;
+  this.last_login  = user.last_login;
+  this.last_update = user.last_update;
+  this.renew_date  = user.renew_date;
+  this.activated   = user.activated;
+  this.activate_type = user.activate_type;
+  this.status      = user.status;
+  this.lead        = user.lead;
+  this.trial       = user.trial;
+  this.start_page  = user.start_page;
+  this.trackstat   = user.trackstat;
+  this.reg_page    = user.reg_page;
+  this.added_by    = user.added_by;
+  this.flag_exempt = user.flag_exempt;
+  this.ip          = user.ip;
+  this.order_id    = user.order_id;
+  this.total_concurrent = user.total_concurrent;
   this.product_id = user.product_id;
   this.login_attempts = user.login_attempts;
   this.locked_until = user.locked_until;
@@ -222,4 +224,37 @@ User.downloadCsv = function(req, res)
   });
 }
 
+User.register = function(data,result)
+{
+    let { username, email, password } = data;
+    const hashed_password = md5(password.toString())
+    const checkEmail = 'Select email FROM users WHERE email = ?';
+    con.query(checkEmail, email, (err,rows,fields) => {
+      if(rows == 0)
+      {
+        const sql = `Insert Into users (username, email, password) VALUES ( ?, ?, ? )`
+        con.query(sql, [username, email, hashed_password],(err,rows,fields) =>{
+          if(err) return result(err,null);
+          let token = jwt.sign({ data: '1234567890' }, 'secret');
+          return result(null,token);
+        })
+      }
+    });
+}
+
+User.login = function(data,result)
+{
+  let {email,password}  = data;
+  const hashed_password = md5(password.toString());
+  con.query('select * from users where email=? and password=?',[email,hashed_password],(err,rows,fields) =>{
+    if(rows.length == 1)
+    {
+      let token = jwt.sign({ data: '1234567890' }, 'secret');
+      return result(null,token);
+    }
+    else{
+      return result(null,'User name and password not match.'); 
+    }
+  })
+}
 module.exports = User;
